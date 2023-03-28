@@ -144,6 +144,7 @@ public class CircleController : MonoBehaviour
         IDamageable target = findIDamageable(other.transform);
         if (target != null)
         {
+            
             targetsOutsideCircle.RemoveAll(x => x == target);
         }
     }
@@ -153,7 +154,10 @@ public class CircleController : MonoBehaviour
         IDamageable target = findIDamageable(other.transform);
         if (target != null)
         {
-            targetsOutsideCircle.Add(target);
+            if (!targetsOutsideCircle.Contains(target))
+            {
+                targetsOutsideCircle.Add(target);
+            }
         }
     }
 
