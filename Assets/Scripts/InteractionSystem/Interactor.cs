@@ -1,9 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class Interactor : MonoBehaviour
+public class Interactor : NetworkBehaviour
 {
     [SerializeField] private Transform _interactionPoint;
     [SerializeField] private float _interactionPointRadius = 0.5f;
@@ -25,7 +26,6 @@ public class Interactor : MonoBehaviour
 
     void OnInteractPressed()
     {
-        Debug.Log("Interaction Pressed");
         if (_interactable != null)
         {
             _interactable.Interact(this);
@@ -35,6 +35,8 @@ public class Interactor : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (!IsOwner && IsClient)
+            return;
         _numFound = Physics.OverlapSphereNonAlloc(_interactionPoint.position, _interactionPointRadius, _colliders, _interactableMask);
 
         if (_numFound > 0)

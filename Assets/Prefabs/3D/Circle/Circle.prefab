@@ -17191,7 +17191,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   shrinkTime: 30
   timeBetweenCircles: 60
-  damagePerSecond: 2
+  damagePerTick: 2
+  damageTickRate: 1
   newCircleRatio: 0.5
   finalCircleRadius: 5
   sphereGraphics: {fileID: 3474586266671302631}

@@ -47,7 +47,7 @@ public class WeaponController : NetworkBehaviour
     public float tracerMaxLength = 20f;
 
     private float _fireTimer = Mathf.Infinity;
-    private float _burstTimer = 0;
+    //private float _burstTimer = 0;
     private bool _firing = false;
     private bool _moving = false;
 
@@ -55,8 +55,6 @@ public class WeaponController : NetworkBehaviour
 
     private float currentVerticalRecoil = 0f;
     private float currentHorizontalRecoil = 0f;
-
-    
 
     // Start is called before the first frame update
     void Start()
@@ -83,148 +81,91 @@ public class WeaponController : NetworkBehaviour
             playerInput.actions["Move"].performed -= OnMove;
         }
     }
-
-    [ServerRpc]
-    private void ShootServerRpc(Vector3 aimLocation)
+    private void Shoot(Vector3 aimLocation)
     {
-        float dt = Time.deltaTime;
-
-
-        // Count time between shots
-        if (_fireTimer < fireRate)
-        {
-            _fireTimer += dt;
-        }
+        Debug.Log("Shoot for " + transform.root.name);
+        if (IsServer)
+            Debug.Log("Server");
         else
+            Debug.Log("Client");
+
+        foreach (var particle in MuzzleFlash)
         {
-            lineRenderer.enabled = false;
+            particle.Emit(1);
         }
 
-        // Only do recoil / aiming if the held weapon has a hingePoint chosen.
-        if (hingePoint != null)
-        {
-            // Aim the held item towards the crosshair's world location.
-            hingePoint.transform.LookAt(aimLocation);
-        }
 
-        if (_firing)
+        Transform fireTransform = (firePoint != null) ? firePoint.transform : gameObject.transform;
+        Vector3 originalForward = fireTransform.forward;
+
+        Vector3 firePosition = fireTransform.position;
+        Vector3 fireVector = aimLocation - firePosition;
+        fireTransform.forward = fireVector;
+
+        float verticalRandomRecoil = Random.Range(-currentVerticalRecoil, currentVerticalRecoil);
+        float horizontalRandomRecoil = Random.Range(-currentHorizontalRecoil, currentHorizontalRecoil);
+
+        Vector3 currentEuler = fireTransform.eulerAngles;
+        currentEuler.x += verticalRandomRecoil;
+        currentEuler.y += horizontalRandomRecoil;
+
+        fireTransform.eulerAngles = currentEuler;
+        fireVector = fireTransform.forward;
+
+        fireTransform.forward = originalForward;
+
+        // Draw tracers
+        lineRenderer.SetPosition(0, firePosition);
+        lineRenderer.SetPosition(1, firePosition + fireVector * tracerMaxLength);
+        lineRenderer.enabled = true;
+
+        RaycastHit hitInfo;
+        bool hit = Physics.Raycast(firePosition, fireVector, out hitInfo, weaponMaxRange);
+        if (hit)
         {
-            if (_fireTimer >= fireRate)
+            // Hit visuals
+            foreach (var particle in HitEffect)
             {
-                Debug.Log("pew");
-                foreach (var particle in MuzzleFlash)
+                particle.transform.position = hitInfo.point;
+                particle.transform.forward = hitInfo.normal;
+                particle.Emit(1);
+            }
+
+            // This version should find a damageable target in the whole tree.
+            IDamageable damageScript = findIDamageable(hitInfo.transform);
+
+            //IDamageable damageScript = hitInfo.transform.root.GetComponent<IDamageable>();
+
+            if (damageScript != null)
+            {
+                float finalDamage = weaponDamage;
+                if (hitInfo.distance > falloffStartDistance)
                 {
-                    particle.Emit(1);
+                    float falloffFinalMult = falloffMult;
+                    float falloffScale = falloffMaxDistance - falloffStartDistance;
+                    if (falloffScale > 0 && hitInfo.distance < falloffMaxDistance)
+                    {
+                        falloffFinalMult *= (hitInfo.distance - falloffStartDistance) / falloffScale;
+                    }
+
+                    finalDamage *= 1 - falloffFinalMult;
                 }
+                // Note - possibly add overloads for additional info passed in to Damage function e.g. hit location for extra headshot damage.
+                damageScript.Damage(finalDamage);
+            }
 
-
-                Transform fireTransform = (firePoint != null) ? firePoint.transform : gameObject.transform;
-                Vector3 originalForward = fireTransform.forward;
-
-                Vector3 firePosition = fireTransform.position;
-                Vector3 fireVector = aimLocation - firePosition;
-                fireTransform.forward = fireVector;
-
-                float verticalRandomRecoil = Random.Range(-currentVerticalRecoil, currentVerticalRecoil);
-                float horizontalRandomRecoil = Random.Range(-currentHorizontalRecoil, currentHorizontalRecoil);
-
-                Vector3 currentEuler = fireTransform.eulerAngles;
-                currentEuler.x += verticalRandomRecoil;
-                currentEuler.y += horizontalRandomRecoil;
-
-                fireTransform.eulerAngles = currentEuler;
-                fireVector = fireTransform.forward;
-
-                fireTransform.forward = originalForward;
-
-                // Draw tracers
-                lineRenderer.SetPosition(0, firePosition);
-                lineRenderer.SetPosition(1, firePosition + fireVector * tracerMaxLength);
-                lineRenderer.enabled = true;
-
-
-
-                RaycastHit hitInfo;
-                bool hit = Physics.Raycast(firePosition, fireVector, out hitInfo, weaponMaxRange);
-                if (hit)
-                {
-                    // Hit visuals
-                    foreach (var particle in HitEffect)
-                    {
-                        particle.transform.position = hitInfo.point;
-                        particle.transform.forward = hitInfo.normal;
-                        particle.Emit(1);
-                    }
-
-                    // This version should find a damageable target in the whole tree.
-                    //IDamageable damageScript = findIDamageable(hitInfo.transform);
-
-                    IDamageable damageScript = hitInfo.transform.root.GetComponent<IDamageable>();
-
-                    if (damageScript != null)
-                    {
-                        float finalDamage = weaponDamage;
-                        if (hitInfo.distance > falloffStartDistance)
-                        {
-                            float falloffFinalMult = falloffMult;
-                            float falloffScale = falloffMaxDistance - falloffStartDistance;
-                            if (falloffScale > 0 && hitInfo.distance < falloffMaxDistance)
-                            {
-                                falloffFinalMult *= (hitInfo.distance - falloffStartDistance) / falloffScale;
-                            }
-
-                            finalDamage *= 1 - falloffFinalMult;
-                        }
-                        // Note - possibly add overloads for additional info passed in to Damage function e.g. hit location for extra headshot damage.
-                        damageScript.Damage(finalDamage);
-                    }
-
-                    if (hitInfo.distance < tracerMaxLength)
-                    {
-                        lineRenderer.SetPosition(1, hitInfo.point);
-                    }
-                }
-
-                // Add recoil
-                currentHorizontalRecoil += horizontalRecoilPerShot;
-                currentHorizontalRecoil = Mathf.Min(currentHorizontalRecoil, horizontalRecoilMax);
-
-                currentVerticalRecoil += verticalRecoilPerShot;
-                currentVerticalRecoil = Mathf.Min(currentVerticalRecoil, verticalRecoilMax);
-
-                _fireTimer = 0;
+            if (hitInfo.distance < tracerMaxLength)
+            {
+                lineRenderer.SetPosition(1, hitInfo.point);
             }
         }
+    }
 
-        // Recoil recovery. Recoil won't go below movement recoil values if we're still moving.
-        float currentMinHorizontal = horizontalRecoilMin;
-        float currentMinVertical = verticalRecoilMin;
-
-        if (_moving)
-        {
-            currentMinHorizontal += horizontalMovementRecoil;
-            currentMinVertical += verticalMovementRecoil;
-        }
-
-        // Horizontal recoil recovery
-        if (currentHorizontalRecoil > currentMinHorizontal)
-        {
-            currentHorizontalRecoil -= recoilRecovery * dt;
-        }
-        else
-        {
-            currentHorizontalRecoil = currentMinHorizontal;
-        }
-
-        // Vertical recoil recovery
-        if (currentVerticalRecoil > currentMinVertical)
-        {
-            currentVerticalRecoil -= recoilRecovery * dt;
-        }
-        else
-        {
-            currentVerticalRecoil = currentMinVertical;
-        }
+    [ServerRpc(RequireOwnership = false)]
+    private void ShootServerRpc(Vector3 aimLocation)
+    {
+        Debug.Log("Name: " + transform.root.gameObject.name);
+        Shoot(aimLocation);
     }
 
     private IDamageable findIDamageable(Transform search)
@@ -242,13 +183,80 @@ public class WeaponController : NetworkBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (!IsOwner)
-            return;
+        if (IsOwner && IsClient)
+        {
+            float dt = Time.deltaTime;
+            Vector3 aimLocation = cameraController.getAimLocation();
 
-        Vector3 aimLocation = cameraController.getAimLocation();
+            // Count time between shots
+        
+            if (_fireTimer < fireRate)
+            {
+                _fireTimer += dt;
+            }
+            else
+            {
+                lineRenderer.enabled = false;
+            }
 
-        ShootServerRpc(aimLocation);
+            // Only do recoil / aiming if the held weapon has a hingePoint chosen.
+            if (hingePoint != null)
+            {
+                // Aim the held item towards the crosshair's world location.
+                hingePoint.transform.LookAt(aimLocation);
+            }
+
+            if (_firing)
+            {
+                if (_fireTimer >= fireRate)
+                {
+                    Shoot(aimLocation);
+                    ShootServerRpc(aimLocation);
+                    //Shoot(aimLocation);
+
+                    // Add recoil
+                    currentHorizontalRecoil += horizontalRecoilPerShot;
+                    currentHorizontalRecoil = Mathf.Min(currentHorizontalRecoil, horizontalRecoilMax);
+
+                    currentVerticalRecoil += verticalRecoilPerShot;
+                    currentVerticalRecoil = Mathf.Min(currentVerticalRecoil, verticalRecoilMax);
+
+                    _fireTimer = 0;
+                    }
+            }
+            // Recoil recovery. Recoil won't go below movement recoil values if we're still moving.
+            float currentMinHorizontal = horizontalRecoilMin;
+            float currentMinVertical = verticalRecoilMin;
+
+            if (_moving)
+            {
+                currentMinHorizontal += horizontalMovementRecoil;
+                currentMinVertical += verticalMovementRecoil;
+            }
+
+            // Horizontal recoil recovery
+            if (currentHorizontalRecoil > currentMinHorizontal)
+            {
+                currentHorizontalRecoil -= recoilRecovery * dt;
+            }
+            else
+            {
+                currentHorizontalRecoil = currentMinHorizontal;
+            }
+
+            // Vertical recoil recovery
+            if (currentVerticalRecoil > currentMinVertical)
+            {
+                currentVerticalRecoil -= recoilRecovery * dt;
+            }
+            else
+            {
+                currentVerticalRecoil = currentMinVertical;
+            }
+
+        }
     }
+
     void OnFire(InputValue value)
     {
         _firing = value.isPressed;

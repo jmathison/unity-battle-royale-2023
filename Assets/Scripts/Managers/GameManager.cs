@@ -20,12 +20,25 @@ public class GameManager : NetworkBehaviour
             Instance = this;
         DontDestroyOnLoad(this);
     }
+
+    private IDamageable findIDamageable(Transform search)
+    {
+        IDamageable damageTarget = null;
+        // Search up the tree to find damage script
+        while (search && damageTarget == null)
+        {
+            damageTarget = search.gameObject.GetComponent<IDamageable>();
+            search = search.parent;
+        }
+        return damageTarget;
+    }
+
     public void HealOwner(float amount)
     {
-        Debug.Log("Healing: " + localCharacter.name + " the amount: " + amount );
-        IDamageable damageable = localCharacter.GetComponent<IDamageable>();
-        if (damageable != null)
-            damageable.Heal(amount);
+        Debug.Log("Healing: " + localCharacter.name + " the amount: " + amount);
+        IDamageable target = findIDamageable(localCharacter.transform);
+        if (target != null)
+            target.Heal(amount);
         else
             Debug.LogWarning("No IDamageable on the gameobject: " + localCharacter.name);
     }
@@ -33,9 +46,9 @@ public class GameManager : NetworkBehaviour
     public void DamageOwner(float amount)
     {
         Debug.Log("Damaging: " + localCharacter.name + " the amount: " + amount);
-        IDamageable damageable = localCharacter.GetComponent<IDamageable>();
-        if (damageable != null)
-            damageable.Heal(amount);
+        IDamageable target = findIDamageable(localCharacter.transform);
+        if (target != null)
+            target.Damage(amount);
         else
             Debug.LogWarning("No IDamageable on the gameobject: " + localCharacter.name);
     }
@@ -43,8 +56,8 @@ public class GameManager : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     private void ChangeNameServerRpc(ulong clientId, string name)
     {
-        Debug.Log("Changing that name");
         Transform playerTransform = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject.transform;
+        playerTransform.gameObject.name = name;
         playerTransform.Find("Canvas").Find("Name").GetComponent<TMP_Text>().text = name;
     }
 
@@ -55,8 +68,10 @@ public class GameManager : NetworkBehaviour
 
     public void ChangeName(string newName)
     {
-        playerName = newName;
-        Debug.Log(playerName);
+        if (IsClient && IsOwner)
+        {
+            playerName = newName;
+        }
     }
 
     public void SetPlayerCharacter(GameObject character)

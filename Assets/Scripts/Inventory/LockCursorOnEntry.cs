@@ -9,11 +9,13 @@ public class LockCursorOnEntry : MonoBehaviour, IPointerEnterHandler, IPointerEx
     [SerializeField] private PlayerInput _playerInput;
     public void OnPointerEnter(PointerEventData eventData)
     {
-        _playerInput.actions["Fire"].Disable() ;
+        if (_playerInput != null)
+            _playerInput.actions["Fire"].Disable() ;
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        _playerInput.actions["Fire"].Enable();
+        if (_playerInput != null)
+            _playerInput.actions["Fire"].Enable();
     }
 }

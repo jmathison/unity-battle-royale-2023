@@ -20,7 +20,7 @@ public class CameraController : NetworkBehaviour
 
     public void Start()
     {
-        if (!IsOwner)
+        if (!IsOwner && IsClient)
             return;
         _playerInput = GetComponent<PlayerInput>();
         _thirdPersonController = GetComponent<ThirdPersonController>();
