@@ -3,23 +3,27 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
-using UnityEngine.Events;
+using Unity.Netcode;
 
-public class PlayerInventory : MonoBehaviour
+public class PlayerInventory : NetworkBehaviour
 {
     public List<Item> items = new List<Item>();
 
     [Header("Don't Edit:")]
     public Transform itemContent;
     public Transform inventory;
+    public Transform grip;
     public GameObject inventoryItemPrefab;
     private Transform _backPack;
+    private GameObject _weaponObject;
 
     private void Start()
     {
         _backPack = transform.Find("Backpack");
+        if (grip.GetComponentInChildren<WeaponController>() != null )
+            _weaponObject = grip.GetComponentInChildren<WeaponController>().gameObject;
     }
-    public void DisplayItems()
+    private void DisplayItems()
     {
         foreach (Transform item in itemContent)
         {
@@ -34,7 +38,12 @@ public class PlayerInventory : MonoBehaviour
             //obj.GetComponent<Button>().onClick.AddListener(() => { GameObject.Find(item.objectName).SendMessage(item.message); } );
             itemName.text = item.itemName;
             itemIcon.sprite = item.icon;
-            obj.GetComponent<Button>().onClick = _backPack.Find(itemName.text).GetComponent<ItemInteractor>().onClick;
+            if (_backPack.Find(itemName.text)) {
+                if (_backPack.Find(itemName.text).GetComponent<BaseInteractor>())
+                {
+                    obj.GetComponent<Button>().onClick = _backPack.Find(itemName.text).GetComponent<BaseInteractor>().onClick;
+                }
+            }
         }
     }
 
@@ -54,7 +63,7 @@ public class PlayerInventory : MonoBehaviour
     }
     public void Remove(GameObject itemObject)
     {
-        Item item = itemObject.GetComponent<ItemInteractor>().item;
+        Item item = itemObject.GetComponent<BaseInteractor>().item;
         items.Remove(item);
         Destroy(itemObject);
         if (itemContent.gameObject.activeSelf)
@@ -70,20 +79,25 @@ public class PlayerInventory : MonoBehaviour
             DisplayItems();
     }
 
+    public void EquipWeapon(Weapon weapon, Transform weaponTransform)
+    {
+        WeaponInteractor interactor = weaponTransform.GetComponent<WeaponInteractor>();
+        GameObject weaponPrefab = interactor.item.weaponPrefab;
+        if (_weaponObject)
+        {
+            Destroy(_weaponObject);
+        }
+        _weaponObject = Instantiate(weaponPrefab);
+        weaponTransform.SetParent(grip, false);
+        weaponTransform.position = new Vector3(0, 0, 0);
+    }
+
     private void OnInventory()
     {
+        inventory.gameObject.SetActive(!inventory.gameObject.activeSelf);
         if (inventory.gameObject.activeSelf)
-        {
-            inventory.gameObject.SetActive(false);
-            transform.GetComponent<StarterAssets.ThirdPersonController>().LockCameraPosition = false;
-            Cursor.lockState = CursorLockMode.Locked;
-        }
-        else
-        {
-            inventory.gameObject.SetActive(true);
-            DisplayItems();
-            transform.GetComponent<StarterAssets.ThirdPersonController>().LockCameraPosition = true;
             Cursor.lockState = CursorLockMode.None;
-        }
+        else
+            Cursor.lockState = CursorLockMode.Locked;
     }
 }

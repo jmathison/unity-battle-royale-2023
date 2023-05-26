@@ -61,7 +61,7 @@ public class GameManager : NetworkBehaviour
         playerTransform.Find("Canvas").Find("Name").GetComponent<TMP_Text>().text = name;
     }
 
-    public void Test()
+    public void ChangeNameOnServer()
     {
         ChangeNameServerRpc(NetworkManager.Singleton.LocalClientId, playerName);
     }

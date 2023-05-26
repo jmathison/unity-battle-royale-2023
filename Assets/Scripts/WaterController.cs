@@ -11,21 +11,28 @@ public class WaterController : MonoBehaviour
 
     public Vector3 moveDirection = new Vector3(0, 1, 0);
 
+    private Vector3 startingScale;
+
     void Start()
     {
-        
+        startingScale = transform.localScale;
     }
 
-    private void OnCollisionEnter(Collision collision)
+    void OnTriggerStay(Collider collider)
     {
-        IDamageable damageTarget = findIDamageable(gameObject.transform);
+        if(transform.localScale == startingScale) {
+            IDamageable damageTarget = findIDamageable(collider.gameObject.transform);
 
-        // If we found a damage script
-        if (damageTarget != null)
-        {
-            damageTarget.Damage(damageOnTouch);
+            // If we found a damage script
+            if (damageTarget != null) {
+                damageTarget.Damage(damageOnTouch);
+            }
+        }
+        else {
+            transform.localScale = startingScale;
         }
     }
+
     // Update is called once per frame
     void Update()
     {

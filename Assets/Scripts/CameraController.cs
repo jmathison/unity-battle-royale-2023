@@ -7,7 +7,7 @@ using Unity.Netcode;
 [RequireComponent(typeof(PlayerInput))]
 public class CameraController : NetworkBehaviour
 {
-
+    public Vector3 spawnPosition = Vector3.zero;
     public InputActionReference aimAction;
 
     private PlayerInput _playerInput;
@@ -18,8 +18,10 @@ public class CameraController : NetworkBehaviour
     private bool _aiming = false;
 
 
-    public void Start()
+    public override void OnNetworkSpawn()
     {
+        base.OnNetworkSpawn();
+        transform.position = spawnPosition;
         if (!IsOwner && IsClient)
             return;
         _playerInput = GetComponent<PlayerInput>();
