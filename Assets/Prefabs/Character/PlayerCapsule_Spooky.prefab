@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 6061022620769052557}
   - component: {fileID: 7068966225635724368}
   m_Layer: 0
-  m_Name: GFX
+  m_Name: Sprite
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -50,7 +50,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   freezeXZAxis: 1
-  useFrontAndBackSprites: 1
+  useFrontAndBackSprites: 0
   frontSprite: {fileID: -1820682754, guid: 2b0cfb0219c6bca46981cdfc4695e952, type: 3}
   backSprite: {fileID: -960302965, guid: 2b0cfb0219c6bca46981cdfc4695e952, type: 3}
 --- !u!114 &4410660492758484271
@@ -584,7 +584,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   MaxHealth: 100
-  Health:
+  Health: 0
+  _Health:
     m_InternalValue: 0
   onDeath:
     m_PersistentCalls:
